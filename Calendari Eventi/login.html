@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Calendario</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="loginApp" class="login-container">
+    <h1>Accesso al Calendario</h1>
+    <input v-model="username" type="text" placeholder="Inserisci il tuo nome" />
+    <button @click="login">Accedi</button>
+  </div>
+
+  <!-- Vue da CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script>
+    const { createApp } = Vue;
+
+    /*
+      Semplice app Vue per il login.
+      - Usiamo v-model per legare l'input (two-way binding).
+      - Il metodo `login` è il controller che valida e salva il MODEL (localStorage).
+      - Non usiamo backend: il nome utente viene salvato in localStorage e usato nella pagina calendario.
+    */
+    createApp({
+      data() {
+        return {
+          // proprietà reactive (DATA) - visibili nella VIEW con {{ }} o v-model
+          username: ""
+        };
+      },
+      methods: {
+        // I metodi sono il CONTROLLER: reagiscono agli eventi della VIEW
+        login() {
+          if (this.username.trim() === "") {
+            alert("Inserisci un nome utente!");
+            return;
+          }
+          // Salva l'utente loggato nel localStorage (MODEL semplice)
+          localStorage.setItem("user", this.username);
+          // Reindirizza alla pagina principale (la VIEW del calendario)
+          window.location.href = "index.html";
+        }
+      }
+    }).mount("#loginApp");
+  </script>
+</body>
+</html>

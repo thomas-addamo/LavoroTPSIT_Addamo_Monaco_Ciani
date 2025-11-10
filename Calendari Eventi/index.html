@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendario Eventi</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="calendar-container">
+    <!-- HEADER: mostra l'utente corrente e logout -->
+    <header class="app-header">
+      <h1>Calendario di {{ user }}</h1>
+      <button @click="logout">Logout</button>
+    </header>
+
+    <!-- Navigazione mese -->
+    <div class="month-nav">
+      <button class="month-btn" @click="prevMonth" title="Mese precedente" aria-label="Mese precedente">&lt;</button>
+      <h2 class="month-title">{{ monthNames[month] }} {{ year }}</h2>
+      <button class="month-btn" @click="nextMonth" title="Mese successivo" aria-label="Mese successivo">&gt;</button>
+    </div>
+
+    <!-- Griglia calendario: 7 colonne, i giorni sono generati con v-for -->
+    <div class="calendar-grid">
+      <div class="weekday" v-for="d in weekDays" :key="d">{{ d }}</div>
+
+      <!-- calendarCells è un array piatto che contiene oggetti giorno/empty -->
+      <div
+        v-for="cell in calendarCells"
+        :key="cell.key"
+        class="day-cell"
+        :class="{ today: cell.isToday, selected: cell.fullDate === selectedDate }"
+        @click="selectDate(cell)"
+        role="button"
+        :aria-label="cell.fullDate ? 'Seleziona ' + cell.fullDate : 'Cella vuota'">
+        <div class="day-number">{{ cell.day || '' }}</div>
+        <div class="events-dots">
+          <!-- mostra pallini colorati per ogni evento del giorno -->
+          <span
+            v-for="ev in eventsForDate(cell.fullDate)"
+            :key="ev.id"
+            class="event-dot"
+            :title="ev.title"
+            :style="{ backgroundColor: ev.color }"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aggiungi/visualizza eventi per la data selezionata -->
+    <div class="add-event">
+      <h2>Eventi per: {{ selectedDate }}</h2>
+      <input v-model="newEvent.title" placeholder="Titolo evento">
+      <input v-model="newEvent.time" type="time">
+      <input v-model="newEvent.place" placeholder="Luogo">
+      <input v-model="newEvent.color" type="color">
+      <button @click="addEvent">Aggiungi evento a questa data</button>
+
+      <h3>Eventi del giorno</h3>
+      <div v-if="eventsForDate(selectedDate).length === 0">Nessun evento per questo giorno.</div>
+      <div v-for="(event, index) in eventsForDate(selectedDate)" :key="event.id" class="event-card" :style="{ backgroundColor: event.color, color: event.textColor }">
+        <div class="event-row">
+          <div>
+            <h4 class="event-title">{{ event.title }}</h4>
+            <div class="event-meta">{{ event.time }} <span class="meta-sep">•</span> {{ event.place }}</div>
+            <small class="event-user">Creato da: {{ event.user }}</small>
+          </div>
+          <div class="event-actions">
+            <button class="delete-btn" @click="deleteEventById(event.id)">Elimina</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vue da CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
