@@ -1,50 +1,40 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Calendario</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div id="loginApp" class="login-container">
-    <h1>Accesso al Calendario</h1>
-    <input v-model="username" type="text" placeholder="Inserisci il tuo nome" />
-    <button @click="login">Accedi</button>
-  </div>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Login - Calendario Lineare</title>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<div class="login-container">
+			<h1>Accedi al calendario</h1>
+			<p>Inserisci il tuo nome: verrà usato come proprietario degli eventi.</p>
+			<input id="name" placeholder="Il tuo nome" autocomplete="off" />
+			<div class="row">
+				<button id="enter">Entra</button>
+			</div>
+		</div>
 
-  <!-- Vue da CDN -->
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <script>
-    const { createApp } = Vue;
+		<script>
+			// Salva il nome nel localStorage e reindirizza a index.html
+			document.getElementById('enter').addEventListener('click', function () {
+				const input = document.getElementById('name');
+				const name = input.value.trim();
+				if (!name) {
+					alert('Per favore inserisci un nome.');
+					return;
+				}
+				localStorage.setItem('calendar_owner', name);
+				// Reindirizza alla pagina principale
+				window.location.href = 'index.html';
+			});
 
-    /*
-      Semplice app Vue per il login.
-      - Usiamo v-model per legare l'input (two-way binding).
-      - Il metodo `login` è il controller che valida e salva il MODEL (localStorage).
-      - Non usiamo backend: il nome utente viene salvato in localStorage e usato nella pagina calendario.
-    */
-    createApp({
-      data() {
-        return {
-          // proprietà reactive (DATA) - visibili nella VIEW con {{ }} o v-model
-          username: ""
-        };
-      },
-      methods: {
-        // I metodi sono il CONTROLLER: reagiscono agli eventi della VIEW
-        login() {
-          if (this.username.trim() === "") {
-            alert("Inserisci un nome utente!");
-            return;
-          }
-          // Salva l'utente loggato nel localStorage (MODEL semplice)
-          localStorage.setItem("user", this.username);
-          // Reindirizza alla pagina principale (la VIEW del calendario)
-          window.location.href = "index.html";
-        }
-      }
-    }).mount("#loginApp");
-  </script>
-</body>
+			// Permette invio con Invio
+			document.getElementById('name').addEventListener('keyup', function (e) {
+				if (e.key === 'Enter') document.getElementById('enter').click();
+			});
+		</script>
+	</body>
 </html>
+

@@ -1,80 +1,79 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calendario Eventi</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div id="app" class="calendar-container">
-    <!-- HEADER: mostra l'utente corrente e logout -->
-    <header class="app-header">
-      <h1>Calendario di {{ user }}</h1>
-      <button @click="logout">Logout</button>
-    </header>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Calendario Lineare</title>
+		<link rel="stylesheet" href="style.css" />
+		<!-- Uso di Vue tramite CDN (versione globale) per semplicità - approccio usato nelle lezioni per principianti -->
+		<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+	</head>
+	<body>
+		<div id="app">
+			<!-- CONTROLLER: logica in app.js gestisce il comportamento; VIEW: template qui sotto -->
+			<header class="app-header">
+				<h1>Calendario lineare</h1>
+				<div class="owner">Utente: <strong>{{ owner }}</strong></div>
+				<button class="logout" @click="logout">Esci</button>
+			</header>
 
-    <!-- Navigazione mese -->
-    <div class="month-nav">
-      <button class="month-btn" @click="prevMonth" title="Mese precedente" aria-label="Mese precedente">&lt;</button>
-      <h2 class="month-title">{{ monthNames[month] }} {{ year }}</h2>
-      <button class="month-btn" @click="nextMonth" title="Mese successivo" aria-label="Mese successivo">&gt;</button>
-    </div>
+			<main>
+				<!-- Mostra il mese corrente e tutte le date, una sotto l'altra -->
+				<section class="dates-list">
+					<!-- v-for: direttiva Vue per iterare tra le date (VIEW) -->
+								<div class="date-row" v-for="day in dates" :key="day.iso">
+									<!-- disposizione orizzontale: data a sinistra, pulsante a destra -->
+									<div class="date-top">
+										<div class="date-label">{{ day.display }}</div>
+										<button class="new-event" @click="openNewEvent(day.iso)">+ Nuovo evento</button>
+									</div>
 
-    <!-- Griglia calendario: 7 colonne, i giorni sono generati con v-for -->
-    <div class="calendar-grid">
-      <div class="weekday" v-for="d in weekDays" :key="d">{{ d }}</div>
+									<!-- Lista eventi per la data selezionata (MODEL: events) -->
+									<div class="events">
+										<div class="event" v-for="(ev, idx) in getEventsFor(day.iso)" :key="idx">
+											<div class="color" :style="{ background: ev.color }" aria-hidden="true"></div>
+											<div class="event-body">
+												<div class="event-title">{{ ev.name }} <small class="owner-tag">({{ ev.owner }})</small></div>
+												<div class="event-meta">{{ ev.time }} <span class="sep">•</span> {{ ev.place }}</div>
+												<div class="event-desc" v-if="ev.description">{{ ev.description }}</div>
+											</div>
+										</div>
+									</div>
+								</div>
+				</section>
+			</main>
 
-      <!-- calendarCells è un array piatto che contiene oggetti giorno/empty -->
-      <div
-        v-for="cell in calendarCells"
-        :key="cell.key"
-        class="day-cell"
-        :class="{ today: cell.isToday, selected: cell.fullDate === selectedDate }"
-        @click="selectDate(cell)"
-        role="button"
-        :aria-label="cell.fullDate ? 'Seleziona ' + cell.fullDate : 'Cella vuota'">
-        <div class="day-number">{{ cell.day || '' }}</div>
-        <div class="events-dots">
-          <!-- mostra pallini colorati per ogni evento del giorno -->
-          <span
-            v-for="ev in eventsForDate(cell.fullDate)"
-            :key="ev.id"
-            class="event-dot"
-            :title="ev.title"
-            :style="{ backgroundColor: ev.color }"></span>
-        </div>
-      </div>
-    </div>
+			<!-- Modal semplice per aggiungere evento -->
+			<div class="modal" v-if="showModal">
+				<div class="modal-content">
+					<h2>Nuovo evento — {{ modalDateDisplay }}</h2>
+					<!-- v-model: two-way binding per i campi del form -->
+					<label>Nome
+						<input v-model="newEvent.name" placeholder="Titolo evento" />
+					</label>
+					<label>Luogo
+						<input v-model="newEvent.place" placeholder="Luogo" />
+					</label>
+					<label>Orario
+						<input v-model="newEvent.time" type="time" />
+					</label>
+					<label>Descrizione
+						<textarea v-model="newEvent.description" rows="3"></textarea>
+					</label>
+					<label>Colore
+						<input v-model="newEvent.color" type="color" />
+					</label>
 
-    <!-- Aggiungi/visualizza eventi per la data selezionata -->
-    <div class="add-event">
-      <h2>Eventi per: {{ selectedDate }}</h2>
-      <input v-model="newEvent.title" placeholder="Titolo evento">
-      <input v-model="newEvent.time" type="time">
-      <input v-model="newEvent.place" placeholder="Luogo">
-      <input v-model="newEvent.color" type="color">
-      <button @click="addEvent">Aggiungi evento a questa data</button>
+					<div class="modal-actions">
+						<button @click="addEvent">Fine</button>
+						<button class="cancel" @click="closeModal">Annulla</button>
+					</div>
+				</div>
+			</div>
+		</div>
 
-      <h3>Eventi del giorno</h3>
-      <div v-if="eventsForDate(selectedDate).length === 0">Nessun evento per questo giorno.</div>
-      <div v-for="(event, index) in eventsForDate(selectedDate)" :key="event.id" class="event-card" :style="{ backgroundColor: event.color, color: event.textColor }">
-        <div class="event-row">
-          <div>
-            <h4 class="event-title">{{ event.title }}</h4>
-            <div class="event-meta">{{ event.time }} <span class="meta-sep">•</span> {{ event.place }}</div>
-            <small class="event-user">Creato da: {{ event.user }}</small>
-          </div>
-          <div class="event-actions">
-            <button class="delete-btn" @click="deleteEventById(event.id)">Elimina</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Vue da CDN -->
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <script src="app.js"></script>
-</body>
+		<!-- Codice dell'app (CONTROLLER + MODEL) -->
+		<script src="app.js"></script>
+	</body>
 </html>
+

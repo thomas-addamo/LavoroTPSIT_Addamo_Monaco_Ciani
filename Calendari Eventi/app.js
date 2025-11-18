@@ -1,145 +1,158 @@
+// app.js
+// Semplice applicazione Vue 3 (principiante) organizzata secondo il paradigma MVC:
+// - MODEL: dati in `events` e `dates` (persistiti in localStorage)
+// - VIEW: il template in index.html utilizza direttive Vue (v-for, v-model, v-if)
+// - CONTROLLER: metodi e hook (addEvent, openNewEvent, created)
+
 const { createApp } = Vue;
 
-/*
-  Correzione bug di selezione data: evitare uso di toISOString() per ricavare la data
-  perché converte in UTC e può spostare il giorno. Usiamo una funzione che formatta
-  la data in base al locale (YYYY-MM-DD) usando getFullYear/getMonth/getDate.
-*/
 createApp({
-  data() {
-    const today = new Date();
-    const pad = (n) => n.toString().padStart(2, '0');
-    const todayLocal = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+	data() {
+		return {
+			// proprietario dell'app (salvato in localStorage dal login)
+			owner: localStorage.getItem('calendar_owner') || '',
 
-    return {
-      user: localStorage.getItem("user") || "",
-      // caricheremo e normalizzeremo gli eventi in created()
-      events: [],
-      month: today.getMonth(),
-      year: today.getFullYear(),
-      selectedDate: todayLocal,
-      newEvent: { title: "", time: "", place: "", color: "#87CEEB" }
-    };
-  },
-  created() {
-    if (!this.user) {
-      window.location.href = "login.html";
-      return;
-    }
+			// lista delle date del mese corrente (MODEL)
+			dates: [],
 
-    // Carica eventi dal localStorage e normalizza le date al formato locale YYYY-MM-DD
-    const raw = JSON.parse(localStorage.getItem(`events_${this.user}`)) || [];
-    this.events = raw.map(e => {
-      const dateStr = this.formatDateLocal(new Date(e.date));
-      const color = e.color || '#87CEEB';
-      return { ...e, date: dateStr, color, textColor: this.getContrastColor(color) };
-    });
-  },
-  computed: {
-    monthNames() {
-      return [
-        "Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
-        "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"
-      ];
-    },
-    weekDays() {
-      return ["Dom","Lun","Mar","Mer","Gio","Ven","Sab"];
-    },
-    calendarCells() {
-      const firstDay = new Date(this.year, this.month, 1).getDay(); // 0 = domenica
-      const daysInMonth = new Date(this.year, this.month + 1, 0).getDate();
-      const cells = [];
+			// eventi: oggetto con chiave ISO date (YYYY-MM-DD) -> array di eventi
+			events: {},
 
-      for (let i = 0; i < firstDay; i++) {
-        cells.push({ key: `empty-${i}`, day: null, fullDate: null, isToday: false });
-      }
+			// stato della "modal" per creare evento
+			showModal: false,
+			modalDate: null,
 
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dt = new Date(this.year, this.month, d);
-        const isoLocal = this.formatDateLocal(dt);
-        const isToday = isoLocal === this.formatDateLocal(new Date());
-        cells.push({ key: `day-${d}`, day: d, fullDate: isoLocal, isToday });
-      }
+			// modello per il nuovo evento (v-model nel form)
+			newEvent: {
+				name: '',
+				place: '',
+				time: '',
+				description: '',
+				color: '#4CAF50',
+				owner: '' // verrà impostato automaticamente
+			}
+		};
+	},
+	computed: {
+		// display leggibile della data del modal
+		modalDateDisplay() {
+			if (!this.modalDate) return '';
+			const d = new Date(this.modalDate);
+			return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+		}
+	},
+	created() {
+		// Hook lifecycle: eseguito quando l'app è inizializzata
+		// 1) verifica se esiste owner, altrimenti reindirizza a login
+		if (!this.owner) {
+			window.location.href = 'login.html';
+			return;
+		}
 
-      return cells;
-    }
-  },
-  methods: {
-    // Calcola il colore del testo (bianco o nero) in base alla luminosità del colore di sfondo
-    getContrastColor(hex) {
-      if (!hex) return '#000';
-      // rimuove il # se presente
-      const h = hex.replace('#','');
-      // supporta shorthand rgb (#fff)
-      const fullHex = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
-      const r = parseInt(fullHex.substring(0,2), 16);
-      const g = parseInt(fullHex.substring(2,4), 16);
-      const b = parseInt(fullHex.substring(4,6), 16);
-      // Calcola luminanza percepita
-      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      // Se luce alta => testo scuro
-      return lum > 180 ? '#000' : '#fff';
-    },
-    // formatta una Date in YYYY-MM-DD usando valori locali (evita spostamenti UTC)
-    formatDateLocal(date) {
-      if (!(date instanceof Date) || isNaN(date)) return null;
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    },
-    selectDate(cell) {
-      if (!cell || !cell.fullDate) return;
-      // assegna la data formattata localmente
-      this.selectedDate = cell.fullDate;
-    },
-    eventsForDate(date) {
-      if (!date) return [];
-      // confrontiamo normalizzando le date degli eventi (nel caso fossero caricate in formati diversi)
-      return this.events.filter(e => this.formatDateLocal(new Date(e.date)) === date && e.user === this.user);
-    },
-    addEvent() {
-      if (!this.newEvent.title) {
-        alert('Inserisci il titolo dell\'evento');
-        return;
-      }
-      const event = {
-        id: Date.now(),
-        title: this.newEvent.title,
-        date: this.selectedDate,
-        time: this.newEvent.time || '',
-        place: this.newEvent.place || '',
-        color: this.newEvent.color || '#87CEEB',
-        textColor: this.getContrastColor(this.newEvent.color || '#87CEEB'),
-        user: this.user
-      };
+		// carica gli eventi dal localStorage (MODEL persistenza)
+		this.loadEventsFromStorage();
 
-      this.events.push(event);
-      this.saveEvents();
+		// costruisce la lista di date del mese corrente (MODEL)
+		this.buildDatesForCurrentMonth();
+	},
+	methods: {
+		// Costruisce l'array `dates` con { iso, display }
+		buildDatesForCurrentMonth() {
+			const now = new Date();
+			const year = now.getFullYear();
+			const month = now.getMonth(); // 0-based
+			const first = new Date(year, month, 1);
+			const last = new Date(year, month + 1, 0);
+			const days = last.getDate();
+			this.dates = [];
+			for (let d = 1; d <= days; d++) {
+				const dt = new Date(year, month, d);
+				const iso = dt.toISOString().slice(0, 10); // YYYY-MM-DD
+				const display = dt.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+				this.dates.push({ iso, display });
+			}
+		},
 
-      this.newEvent = { title: "", time: "", place: "", color: "#87CEEB" };
-    },
-    deleteEventById(id) {
-      const idx = this.events.findIndex(e => e.id === id);
-      if (idx !== -1) {
-        this.events.splice(idx, 1);
-        this.saveEvents();
-      }
-    },
-    saveEvents() {
-      localStorage.setItem(`events_${this.user}`, JSON.stringify(this.events));
-    },
-    logout() {
-      localStorage.removeItem('user');
-      window.location.href = 'login.html';
-    },
-    prevMonth() {
-      if (this.month === 0) { this.month = 11; this.year -= 1; }
-      else this.month -= 1;
-    },
-    nextMonth() {
-      if (this.month === 11) { this.month = 0; this.year += 1; }
-      else this.month += 1;
-    }
-  }
+		// Ritorna array di eventi per una data (se non ci sono, ritorna [])
+		getEventsFor(isoDate) {
+			return this.events[isoDate] || [];
+		},
+
+		// Apre la modal per una data selezionata
+		openNewEvent(isoDate) {
+			this.modalDate = isoDate;
+			this.newEvent = {
+				name: '',
+				place: '',
+				time: '',
+				description: '',
+				color: '#4CAF50',
+				owner: this.owner
+			};
+			this.showModal = true;
+		},
+
+		// Chiude la modal
+		closeModal() {
+			this.showModal = false;
+			this.modalDate = null;
+		},
+
+		// Aggiunge l'evento al MODEL e lo salva nello storage
+		addEvent() {
+			if (!this.newEvent.name.trim()) {
+				alert('Inserisci il nome dell\'evento.');
+				return;
+			}
+			const iso = this.modalDate;
+			if (!this.events[iso]) this.events[iso] = [];
+			// Copia dei dati dell'evento (immutabilità semplice)
+			const ev = {
+				name: this.newEvent.name,
+				place: this.newEvent.place,
+				time: this.newEvent.time,
+				description: this.newEvent.description,
+				color: this.newEvent.color,
+				owner: this.newEvent.owner || this.owner
+			};
+			this.events[iso].push(ev);
+			// Persistenza
+			this.saveEventsToStorage();
+			// Chiude modal
+			this.closeModal();
+		},
+
+		// Salva events in localStorage
+		saveEventsToStorage() {
+			try {
+				localStorage.setItem('calendar_events', JSON.stringify(this.events));
+			} catch (e) {
+				console.error('Impossibile salvare gli eventi', e);
+			}
+		},
+
+		// Carica events da localStorage
+		loadEventsFromStorage() {
+			try {
+				const raw = localStorage.getItem('calendar_events');
+				if (raw) this.events = JSON.parse(raw);
+			} catch (e) {
+				console.error('Errore caricamento eventi', e);
+				this.events = {};
+			}
+		},
+
+		// Logout: rimuove owner e manda a login
+		logout() {
+			localStorage.removeItem('calendar_owner');
+			window.location.href = 'login.html';
+		}
+	}
 }).mount('#app');
+
+// NOTE per lo studente (commenti didattici):
+// - v-model usa il two-way binding per tenere sincronizzati i campi del form con `newEvent`.
+// - v-for viene usato per mostrare le date e per mostrare gli eventi di ogni data.
+// - created è un lifecycle hook che inizializza i dati quando l'app parte.
+// - localStorage è usato come persistenza semplice (simula un MODEL permanente tra refresh).
+
