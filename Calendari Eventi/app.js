@@ -8,12 +8,12 @@ const { createApp } = Vue;
 */
 const DayCell = {
   // props = dati che arrivano dal "genitore"
-  props: ["dayNumber", "isSelected"],
+  props: ["dayNumber", "isSelected", "isToday"],
   // template = parte grafica solo di questo giorno
   template: `
     <button
       class="day-cell"
-      :class="{ selected: isSelected }"
+      :class="{ selected: isSelected, today: isToday }"
       @click="$emit('select-day', dayNumber)"
     >
       {{ dayNumber }}
@@ -38,16 +38,21 @@ createApp({
       // giorno selezionato (numero, es. 1, 2, 3...)
       selectedDay: null,
 
-      // testo dell'evento che vogliamo aggiungere
-      newEventText: "",
+      // campi nuovo evento
+      newEventName: "",
+      newEventDescription: "",
+      newEventTime: "", // formato HH:MM
 
       /* 
          events è il nostro MODEL delle attività.
-         È un oggetto dove la chiave è una data in formato "YYYY-MM-DD"
-         e il valore è un array di stringhe (gli eventi di quel giorno).
+         Ogni chiave è una data "YYYY-MM-DD" e il valore è un array di oggetti evento.
+         Ogni evento: { title, description, time }
          Esempio:
          {
-           "2025-11-18": ["compito di mate", "allenamento"]
+           "2025-11-18": [
+             { title: "Compito di mate", description: "Studio algebra", time: "08:30" },
+             { title: "Allenamento", description: "Calcio al campo", time: "17:00" }
+           ]
          }
       */
       events: {}
@@ -63,7 +68,7 @@ createApp({
   // Usando le "parentesi graffe" {{ }} e le direttive Vue (v-for, v-if, v-model...)
   template: `
     <div class="calendar-app">
-      <h1>Calendario super semplice con Vue</h1>
+      <h1>Calendario</h1>
 
       <!-- intestazione con mese e anno -->
       <div class="header">
@@ -91,6 +96,7 @@ createApp({
           :key="day"
           :dayNumber="day"
           :isSelected="day === selectedDay"
+          :isToday="isToday(day)"
           @select-day="selectDay"
         />
       </div>
@@ -107,8 +113,10 @@ createApp({
         <!-- elenco eventi per quel giorno -->
         <!-- eventsForSelectedDay è una proprietà computata (computed) -->
         <ul v-if="eventsForSelectedDay.length > 0">
-          <li v-for="(ev, index) in eventsForSelectedDay" :key="index">
-            {{ ev }}
+          <li v-for="(ev, index) in eventsForSelectedDay" :key="index" :title="ev.description">
+            <span class="event-time">{{ ev.time || '--:--' }}</span>
+            <span class="event-title">{{ ev.title }}</span>
+            <span class="event-desc" v-if="ev.description">{{ ev.description }}</span>
             <button @click="deleteEvent(index)">X</button>
           </li>
         </ul>
@@ -119,10 +127,22 @@ createApp({
         <div class="add-event">
           <input
             type="text"
-            v-model="newEventText"
-            placeholder="Scrivi il tuo evento qui"
+            v-model="newEventName"
+            placeholder="Titolo evento"
+            maxlength="40"
           />
-          <button @click="addEvent">Aggiungi evento</button>
+          <input
+            type="text"
+            v-model="newEventDescription"
+            placeholder="Descrizione breve"
+            maxlength="80"
+          />
+          <input
+            type="time"
+            v-model="newEventTime"
+            placeholder="Orario"
+          />
+          <button @click="addEvent">Aggiungi</button>
         </div>
       </div>
     </div>
@@ -133,27 +153,35 @@ createApp({
     // cambia giorno selezionato quando clicchiamo su un DayCell
     selectDay(dayNumber) {
       this.selectedDay = dayNumber;
-      // resettiamo la casella di testo quando scegliamo un nuovo giorno
-      this.newEventText = "";
+      // reset campi quando cambiamo giorno
+      this.newEventName = "";
+      this.newEventDescription = "";
+      this.newEventTime = "";
     },
 
     // aggiunge un evento al giorno selezionato
     addEvent() {
-      // se il testo è vuoto, non facciamo niente
-      if (!this.newEventText.trim()) {
-        return;
+      const title = this.newEventName.trim();
+      const description = this.newEventDescription.trim();
+      const time = this.newEventTime.trim();
+
+      if (!title) {
+        return; // titolo obbligatorio
       }
 
-      // se per questa data non esiste ancora un array, lo creiamo
       if (!this.events[this.selectedDateKey]) {
         this.events[this.selectedDateKey] = [];
       }
 
-      // aggiungiamo il nuovo evento all'array
-      this.events[this.selectedDateKey].push(this.newEventText.trim());
+      this.events[this.selectedDateKey].push({
+        title,
+        description,
+        time
+      });
 
-      // puliamo l'input
-      this.newEventText = "";
+      this.newEventName = "";
+      this.newEventDescription = "";
+      this.newEventTime = "";
     },
 
     // elimina un evento in base all'indice
@@ -180,6 +208,15 @@ createApp({
         this.currentYear++;
       }
       this.selectedDay = null;
+    },
+    // verifica se il giorno passato è oggi
+    isToday(dayNumber) {
+      const today = new Date();
+      return (
+        dayNumber === today.getDate() &&
+        this.currentMonth === today.getMonth() &&
+        this.currentYear === today.getFullYear()
+      );
     }
   },
 
