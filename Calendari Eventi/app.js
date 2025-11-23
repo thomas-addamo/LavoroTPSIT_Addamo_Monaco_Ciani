@@ -44,16 +44,16 @@ createApp({
       newEventTime: "", // formato HH:MM
 
       /* 
-         events è il nostro MODEL delle attività.
-         Ogni chiave è una data "YYYY-MM-DD" e il valore è un array di oggetti evento.
-         Ogni evento: { title, description, time }
-         Esempio:
-         {
-           "2025-11-18": [
-             { title: "Compito di mate", description: "Studio algebra", time: "08:30" },
-             { title: "Allenamento", description: "Calcio al campo", time: "17:00" }
-           ]
-         }
+        events è il nostro MODEL delle attività.
+        Ogni chiave è una data "YYYY-MM-DD" e il valore è un array di oggetti evento.
+        Ogni evento: { title, description, time }
+        Esempio:
+        {
+          "2025-11-18": [
+            { title: "Compito di mate", description: "Studio algebra", time: "08:30" },
+            { title: "Allenamento", description: "Calcio al campo", time: "17:00" }
+          ]
+        }
       */
       events: {}
     };
